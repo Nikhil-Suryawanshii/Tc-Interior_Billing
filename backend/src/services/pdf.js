@@ -271,10 +271,25 @@ function drawFactBox(doc, fact, x, y, width, height) {
   doc.save();
   doc.roundedRect(x, y, width, height, 11).fillAndStroke('#f5f6f8', '#aeb5c0');
   doc.restore();
-  doc.font('Times-Roman').fontSize(fact.highlight ? 9 : 10).fillColor(color)
+  doc.font('Times-Roman').fontSize(10).fillColor(color)
     .text(`${fact.label}:`, x + 8, y + 11, { width: width * 0.44, lineBreak: false });
-  doc.font(fact.highlight ? rupeeFont(doc) : 'Times-Bold').fontSize(fact.highlight ? 9 : 10).fillColor(color)
-    .text(fact.value, x + width * 0.5, y + 11, { width: width * 0.45 - 8, align: 'right', lineBreak: false });
+  const valueY = y + 10;
+  const valueSize = fact.highlight ? 11 : 12;
+  if (fact.highlight && fact.value.includes('₹')) {
+    const amount = fact.value.replace(/^₹\s*/, '');
+    const right = x + width - 8;
+    doc.font('Helvetica-Bold').fontSize(valueSize).fillColor(color);
+    const amountWidth = doc.widthOfString(amount);
+    doc.text(amount, right - amountWidth, valueY, { lineBreak: false });
+    doc.font(rupeeFont(doc)).fontSize(valueSize).fillColor(color);
+    const symbolWidth = doc.widthOfString('₹');
+    // SFNS and Helvetica use different ascender metrics. Raise the rupee glyph
+    // slightly so it visually shares the bold amount's baseline in the PDF.
+    doc.text('₹', right - amountWidth - symbolWidth - 3, valueY - 2, { lineBreak: false });
+    return;
+  }
+  doc.font('Times-Bold').fontSize(valueSize).fillColor(color)
+    .text(fact.value, x + width * 0.5, valueY, { width: width * 0.45 - 8, align: 'right', lineBreak: false });
 }
 
 function drawRule(doc, y) {
@@ -358,12 +373,12 @@ function drawTotals(doc, kind, record, startY) {
     rows.push(['Balance due', rupee(record.balanceDue)]);
   }
 
-  const panelWidth = 390;
+  const panelWidth = 300;
   const panelX = doc.page.width - LEFT - panelWidth;
-  const panelPadding = 16;
-  const rowHeights = rows.map(([label]) => (label === 'Total' || label === 'Balance due' ? 31 : 23));
+  const panelPadding = 14;
+  const rowHeights = rows.map(([label]) => (label === 'Total' || label === 'Balance due' ? 22 : 16));
   const dividerCount = rows.filter(([label]) => label === 'Total' || label === 'Balance due').length;
-  const panelHeight = 26 + rowHeights.reduce((sum, rowHeight) => sum + rowHeight, 0) + dividerCount * 11;
+  const panelHeight = 22 + rowHeights.reduce((sum, rowHeight) => sum + rowHeight, 0) + dividerCount * 6;
   let y = startY;
   if (y + panelHeight > doc.page.height - PAGE_BOTTOM) {
     doc.addPage();
@@ -374,7 +389,7 @@ function drawTotals(doc, kind, record, startY) {
   doc.roundedRect(panelX, y, panelWidth, panelHeight, 15).fillAndStroke('#ffffff', '#aeb5c0');
   doc.restore();
 
-  let cursor = y + 14;
+  let cursor = y + 12;
   rows.forEach(([label, value], index) => {
     const major = label === 'Total' || label === 'Balance due';
     if (major) {
@@ -384,15 +399,16 @@ function drawTotals(doc, kind, record, startY) {
         .lineTo(panelX + panelWidth - panelPadding, cursor + 2)
         .stroke();
       doc.restore();
-      cursor += 10;
+      cursor += 5;
     }
     const color = major ? '#168cae' : '#111827';
     doc.font(major ? 'Helvetica-Bold' : 'Times-Roman')
-      .fontSize(major ? 17 : 14).fillColor(major && label === 'Total' ? '#111827' : color)
-      .text(label, panelX + panelPadding, cursor, { width: 170, lineBreak: false });
+      .fontSize(major ? 12 : 10).fillColor(major && label === 'Total' ? '#111827' : color)
+      .text(label, panelX + panelPadding, cursor, { width: 128, lineBreak: false });
+    const valueX = panelX + 138;
     doc.font(value.includes('₹') ? rupeeFont(doc) : (major ? 'Helvetica-Bold' : 'Times-Roman'))
-      .fontSize(major ? 16 : 14).fillColor(color)
-      .text(value, panelX + 190, cursor, { width: panelWidth - 190 - panelPadding, align: 'right', lineBreak: false });
+      .fontSize(major ? 12 : 10).fillColor(color)
+      .text(value, valueX, cursor, { width: panelWidth - (valueX - panelX) - panelPadding, align: 'right', lineBreak: false });
     cursor += rowHeights[index];
   });
   return y + panelHeight + 12;

@@ -190,7 +190,7 @@ function DocumentEditor({ kind }) {
     <div>
       <PageHeader title={id ? `Edit ${kind}` : `New ${kind}`} />
       <Notice error={error} />
-      {initial ? <DocumentForm kind={kind} initial={initial} errors={errors} onSubmit={submit} saving={saving} /> : <p className="text-sm text-stone-500">Loading form…</p>}
+      {initial ? <DocumentForm kind={kind} initial={initial} errors={errors} onSubmit={submit} saving={saving} simpleInvoice={kind === 'invoice' && !id} /> : <p className="text-sm text-stone-500">Loading form…</p>}
     </div>
   );
 }

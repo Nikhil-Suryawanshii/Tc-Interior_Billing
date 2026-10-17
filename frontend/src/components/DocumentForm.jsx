@@ -40,7 +40,7 @@ export function emptyDocument(kind, defaults = {}) {
   };
 }
 
-export default function DocumentForm({ kind, initial, errors = {}, onSubmit, saving }) {
+export default function DocumentForm({ kind, initial, errors = {}, onSubmit, saving, simpleInvoice = false }) {
   const [company, setCompany] = useState(null);
   const [categories, setCategories] = useState([]);
   const [products, setProducts] = useState([]);
@@ -126,6 +126,33 @@ export default function DocumentForm({ kind, initial, errors = {}, onSubmit, sav
   }
 
   const selectedClient = clients.find((client) => client.id === form.clientId);
+
+  if (kind === 'invoice' && simpleInvoice) {
+    return (
+      <SimpleInvoiceForm
+        form={form}
+        errors={errors}
+        saving={saving}
+        clients={clients}
+        clientSearch={clientSearch}
+        setClientSearch={setClientSearch}
+        pickerOpen={pickerOpen}
+        setPickerOpen={setPickerOpen}
+        newClient={newClient}
+        setNewClient={setNewClient}
+        selectedClient={selectedClient}
+        categories={categories}
+        products={products}
+        preview={preview}
+        update={update}
+        updateItem={updateItem}
+        chooseClient={chooseClient}
+        addProduct={addProduct}
+        onSubmit={onSubmit}
+        clearDirty={() => setDirty(false)}
+      />
+    );
+  }
 
   return (
     <form
@@ -304,6 +331,190 @@ export default function DocumentForm({ kind, initial, errors = {}, onSubmit, sav
       </Panel>
 
       <Button type="submit" disabled={saving}>{saving ? 'Saving…' : kind === 'invoice' ? 'Save invoice' : 'Save quotation'}</Button>
+    </form>
+  );
+}
+
+function SimpleInvoiceForm({
+  form, errors, saving, clients, clientSearch, setClientSearch, pickerOpen, setPickerOpen,
+  newClient, setNewClient, selectedClient, categories, products, preview, update,
+  updateItem, chooseClient, addProduct, onSubmit, clearDirty,
+}) {
+  const [itemPage, setItemPage] = useState(0);
+  const itemsPerPage = 20;
+  const pageCount = Math.max(1, Math.ceil(form.items.length / itemsPerPage));
+  const visibleItems = form.items.slice(itemPage * itemsPerPage, (itemPage + 1) * itemsPerPage);
+
+  useEffect(() => {
+    setItemPage((page) => Math.min(page, pageCount - 1));
+  }, [pageCount]);
+
+  return (
+    <form
+      className="space-y-4"
+      onSubmit={(event) => {
+        event.preventDefault();
+        onSubmit(form, clearDirty);
+      }}
+    >
+      <Panel className="grid gap-3 md:grid-cols-3">
+        <div className="md:col-span-3">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-stone-500">Invoice details</h2>
+        </div>
+        <div className="text-sm">
+          <label htmlFor="invoice-client" className="mb-1 block font-medium text-stone-700">Bill to</label>
+          <input
+            id="invoice-client"
+            className={controlClass}
+            placeholder="Search and choose a client"
+            value={selectedClient?.name || (form.clientId ? form.clientName || clientSearch : clientSearch)}
+            onFocus={() => { setPickerOpen(true); if (!form.clientId) setClientSearch(''); }}
+            onChange={(event) => {
+              setPickerOpen(true);
+              setClientSearch(event.target.value);
+              if (form.clientId) update({ clientId: '', clientName: '' });
+            }}
+          />
+          {pickerOpen ? (
+            <div className="mt-1 max-h-48 overflow-auto rounded-md border border-stone-200 bg-white shadow-sm">
+              {clients.map((client) => (
+                <button type="button" key={client.id} className="block w-full px-3 py-2 text-left text-sm hover:bg-stone-100" onClick={() => chooseClient(client)}>
+                  <span className="font-medium">{client.name}</span>
+                  {client.phone ? <span className="ml-2 text-stone-500">{client.phone}</span> : null}
+                </button>
+              ))}
+              {!clients.length ? <p className="px-3 py-2 text-sm text-stone-500">No matching clients</p> : null}
+              <button type="button" className="block w-full border-t border-stone-100 px-3 py-2 text-left text-sm font-medium text-sky-800 hover:bg-stone-50" onClick={() => { setNewClient(true); setPickerOpen(false); update({ clientId: '', clientName: clientSearch }); }}>
+                + Add a new client
+              </button>
+            </div>
+          ) : null}
+          {newClient ? (
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              <input className={controlClass} aria-label="Client name" placeholder="Client name" value={form.clientName || ''} onChange={(event) => update({ clientName: event.target.value })} />
+              <input className={controlClass} aria-label="Client phone" placeholder="Phone (optional)" value={form.clientPhone || ''} onChange={(event) => update({ clientPhone: event.target.value })} />
+              <input className={`${controlClass} sm:col-span-2`} aria-label="Client address" placeholder="Billing address (optional)" value={form.billingAddress || ''} onChange={(event) => update({ billingAddress: event.target.value })} />
+            </div>
+          ) : null}
+          {errors.clientId ? <span className="mt-1 block text-xs text-red-700">{errors.clientId}</span> : null}
+        </div>
+        <Field label="Invoice date" error={errors.invoiceDate}>
+          <input type="date" className={controlClass} value={form.invoiceDate} onChange={(event) => update({ invoiceDate: event.target.value })} />
+        </Field>
+        <Field label="Due date" error={errors.dueDate}>
+          <input type="date" className={controlClass} value={form.dueDate} onChange={(event) => update({ dueDate: event.target.value })} />
+        </Field>
+      </Panel>
+
+      <Panel>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-stone-500">Items ({form.items.length})</h2>
+            <p className="mt-1 text-xs text-stone-500">Add a catalog item or enter the work and price below.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <select className={`${controlClass} w-auto min-w-40`} aria-label="Add from catalog" defaultValue="" onChange={(event) => {
+              const product = products.find((item) => item.id === event.target.value);
+              if (product) {
+                addProduct(product);
+                setItemPage(Math.floor(form.items.length / itemsPerPage));
+              }
+              event.target.value = '';
+            }}>
+              <option value="">Choose catalog item</option>
+              {products.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}
+            </select>
+            <select className={`${controlClass} w-auto min-w-40`} aria-label="Add category items" defaultValue="" onChange={(event) => {
+              const parent = categories.find((category) => category.id === event.target.value);
+              const points = categories.filter((category) => category.parentId === event.target.value);
+              if (parent && points.length) {
+                const existing = form.items.filter((item) => item.name.trim());
+                const nextItems = [...existing, ...points.map((point) => ({
+                  ...blankItem(), name: point.name, sectionHeading: parent.name, categoryId: point.id,
+                  unitPrice: point.defaultPrice || '0.00',
+                }))];
+                update({ items: nextItems });
+                setItemPage(Math.floor(existing.length / itemsPerPage));
+              }
+              event.target.value = '';
+            }}>
+              <option value="">Add category list</option>
+              {categories.filter((category) => !category.parentId).map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+            </select>
+            <Button type="button" tone="secondary" onClick={() => {
+              update({ items: [...form.items, blankItem()] });
+              setItemPage(Math.floor(form.items.length / itemsPerPage));
+            }}>+ Add item</Button>
+          </div>
+        </div>
+        {errors.items ? <p className="mb-2 text-xs text-red-700">{errors.items}</p> : null}
+        <div className="space-y-3">
+          {visibleItems.map((item, pageIndex) => {
+            const index = itemPage * itemsPerPage + pageIndex;
+            return (
+            <div key={index} className="rounded-lg border border-stone-200 p-3">
+              <div className="grid items-end gap-2 sm:grid-cols-12">
+                <div className="sm:col-span-5"><Field label={`Item ${index + 1}`} error={errors[`items.${index}.name`]}>
+                  <input className={controlClass} placeholder="Work or product name" value={item.name} onChange={(event) => updateItem(index, { name: event.target.value })} />
+                </Field></div>
+                <div className="sm:col-span-2"><Field label="Qty"><input className={controlClass} type="number" min="0.01" step="any" value={item.quantity} onChange={(event) => updateItem(index, { quantity: event.target.value })} /></Field></div>
+                <div className="sm:col-span-2"><Field label="Price"><input className={controlClass} type="number" min="0" step="0.01" value={item.unitPrice} onChange={(event) => updateItem(index, { unitPrice: event.target.value })} /></Field></div>
+                <div className="sm:col-span-2"><Field label="Line total"><input className={`${controlClass} bg-stone-50`} value={preview.lines[index] || '0.00'} disabled /></Field></div>
+                <div className="sm:col-span-1"><Button type="button" tone="danger" aria-label={`Remove item ${index + 1}`} onClick={() => update({ items: form.items.length === 1 ? [blankItem()] : form.items.filter((_, rowIndex) => rowIndex !== index) })}>×</Button></div>
+              </div>
+              <details className="mt-2 text-sm text-stone-600">
+                <summary className="cursor-pointer">Description, unit, discount and tax</summary>
+                <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                  <Field label="Unit"><input className={controlClass} value={item.unit} onChange={(event) => updateItem(index, { unit: event.target.value })} /></Field>
+                  <Field label="Discount"><input className={controlClass} type="number" min="0" step="0.01" value={item.discountAmount} onChange={(event) => updateItem(index, { discountAmount: event.target.value })} /></Field>
+                  <Field label="Tax %"><input className={controlClass} type="number" min="0" step="0.01" value={item.taxRate} onChange={(event) => updateItem(index, { taxRate: event.target.value })} /></Field>
+                  <Field label="Category / section"><input className={controlClass} list="invoice-sections" value={item.sectionHeading} onChange={(event) => updateItem(index, { sectionHeading: event.target.value })} /></Field>
+                  <Field label="Description"><textarea className={controlClass} rows={2} value={item.description} onChange={(event) => updateItem(index, { description: event.target.value })} /></Field>
+                </div>
+              </details>
+            </div>
+          ); })}
+        </div>
+        {pageCount > 1 ? (
+          <div className="mt-3 flex items-center justify-between border-t border-stone-100 pt-3 text-sm text-stone-600">
+            <span>Showing {itemPage * itemsPerPage + 1}–{Math.min((itemPage + 1) * itemsPerPage, form.items.length)} of {form.items.length}</span>
+            <div className="flex gap-2">
+              <Button type="button" tone="secondary" disabled={itemPage === 0} onClick={() => setItemPage((page) => page - 1)}>Previous</Button>
+              <Button type="button" tone="secondary" disabled={itemPage >= pageCount - 1} onClick={() => setItemPage((page) => page + 1)}>Next</Button>
+            </div>
+          </div>
+        ) : null}
+        <datalist id="invoice-sections">{categories.map((category) => <option key={category.id} value={category.name} />)}</datalist>
+      </Panel>
+
+      <Panel className="grid gap-3 sm:grid-cols-2">
+        <Field label="Additional charges"><input className={controlClass} type="number" min="0" step="0.01" value={form.additionalCharges} onChange={(event) => update({ additionalCharges: event.target.value })} /></Field>
+        <div className="space-y-1 self-end text-right text-sm text-stone-600">
+          <p>Subtotal: {preview.subtotal}</p>
+          <p>Discount: {preview.discountTotal}</p>
+          <p>Tax: {preview.taxTotal}</p>
+          <p className="text-base font-semibold text-stone-900">Invoice total: {preview.grandTotal}</p>
+        </div>
+      </Panel>
+
+      <details className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
+        <summary className="cursor-pointer text-sm font-semibold text-stone-700">More invoice details (optional)</summary>
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <Field label="P.O. / S.O."><input className={controlClass} value={form.poSoNumber} onChange={(event) => update({ poSoNumber: event.target.value })} /></Field>
+          <Field label="Currency"><input className={controlClass} value={form.currency} onChange={(event) => update({ currency: event.target.value })} /></Field>
+          <Field label="Salutation"><input className={controlClass} value={form.salutation} onChange={(event) => update({ salutation: event.target.value })} /></Field>
+          <Field label="Signatory"><input className={controlClass} value={form.signatory} onChange={(event) => update({ signatory: event.target.value })} /></Field>
+          <Field label="Message"><textarea className={controlClass} rows={2} value={form.message} onChange={(event) => update({ message: event.target.value })} /></Field>
+          <Field label="Closing"><input className={controlClass} value={form.closing} onChange={(event) => update({ closing: event.target.value })} /></Field>
+          <Field label="Payment terms"><textarea className={controlClass} rows={2} value={form.paymentTerms} onChange={(event) => update({ paymentTerms: event.target.value })} /></Field>
+          <Field label="Notes"><textarea className={controlClass} rows={2} value={form.notes} onChange={(event) => update({ notes: event.target.value })} /></Field>
+          <Field label="PDF closing message"><textarea className={controlClass} rows={2} value={form.terms} onChange={(event) => update({ terms: event.target.value })} /></Field>
+        </div>
+      </details>
+
+      <div className="flex justify-end">
+        <Button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save invoice'}</Button>
+      </div>
     </form>
   );
 }
