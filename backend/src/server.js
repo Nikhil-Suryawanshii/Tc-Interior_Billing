@@ -1,7 +1,3 @@
-import fs from 'fs/promises';
-import path from 'path';
-import { fileURLToPath } from 'node:url';
-import dotenv from 'dotenv';
 import express from 'express';
 import cors from 'cors';
 import { connectDb } from './config/db.js';
@@ -9,8 +5,6 @@ import { uploadsDir } from './config/paths.js';
 import { asyncHandler } from './lib/asyncHandler.js';
 import api from './routes/index.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
-
-dotenv.config();
 
 const app = express();
 const origin = process.env.CLIENT_ORIGIN || 'http://localhost:5173';
@@ -34,18 +28,6 @@ app.use('/api/v1', asyncHandler(async (req, _res, next) => {
 app.use('/api/v1', api);
 app.use(notFound);
 app.use(errorHandler);
-
-async function start() {
-  await fs.mkdir(path.join(uploadsDir, 'company'), { recursive: true });
-  await fs.mkdir(path.join(uploadsDir, 'products'), { recursive: true });
-  await fs.mkdir(path.join(uploadsDir, 'pdfs'), { recursive: true });
-  await connectDb();
-  const port = process.env.PORT || 5000;
-  app.listen(port, () => {
-    console.log(`API listening on http://localhost:${port}`);
-    console.log('Connected to MongoDB Atlas');
-  });
-}
 
 function statusPage(databaseConnected) {
   const status = databaseConnected ? 'Connected successfully' : 'Database connection failed';
@@ -88,14 +70,3 @@ function statusPage(databaseConnected) {
 }
 
 export default app;
-
-// Vercel imports the Express app as a function. Keep filesystem setup and
-// app.listen() for local development only; function storage is ephemeral.
-const isDirectExecution = process.argv[1]
-  && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (process.env.VERCEL !== '1' && isDirectExecution) {
-  start().catch((error) => {
-    console.error(error.message);
-    process.exit(1);
-  });
-}
