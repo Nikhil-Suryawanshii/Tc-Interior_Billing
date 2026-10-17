@@ -2,6 +2,8 @@
 
 This guide deploys the React app and Express API as **two Vercel projects** from this repository. MongoDB Atlas remains the database.
 
+The `backend/` and `frontend/` folders are siblings. Create two Vercel projects from the same Git repository: set the backend project's Root Directory to `backend` and the frontend project's Root Directory to `frontend`. Do not deploy this repository root as either app.
+
 ```text
 Browser → React app on Vercel → Express API on Vercel → MongoDB Atlas
                                       ↕
