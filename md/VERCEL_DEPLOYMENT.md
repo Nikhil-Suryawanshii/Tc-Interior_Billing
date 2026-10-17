@@ -18,7 +18,7 @@ Before deploying, make these changes:
 2. **Choose Blob access deliberately.** Product images and logos can use a public Blob store. Use a separate private Blob store for quotations and invoices, and stream/download those through the API. Private Blob files require server-side access; public Blob files can be opened by anyone who has the URL.
 3. **Check existing upload files.** Move any existing PDFs/images that must be kept into persistent storage before excluding local uploads. Make sure private PDFs and `.env` files are not tracked in Git or included in a deployment. Add `uploads/**` to `backend/.vercelignore` once needed files have been migrated.
 4. **Make PDF fonts Linux-compatible.** The PDF generator currently refers to fonts under `/System/Library/Fonts`, which is a macOS path and will not exist in Vercel's Linux runtime. Bundle appropriately licensed font files in `backend/assets/` and point the PDF generator to those files. Include a font with the rupee glyph so `₹` renders correctly.
-5. **Remove startup writes to the project folder.** `backend/src/server.js` currently creates `backend/uploads/*` on startup. Remove that startup behavior. If the PDF generator needs a temporary file, use `/tmp` and then upload it to Blob.
+5. **Keep function startup free of local server work.** The backend exports its Express app for Vercel and only creates upload folders or calls `app.listen()` during local development. Vercel connects to MongoDB when an API route needs it. If the PDF generator needs a temporary file, use `/tmp` and then upload it to Blob.
 6. **Check upload payload limits.** The current image upload limit is 5 MB, while Vercel Function request and response bodies are limited to 4.5 MB. Lower the server upload limit or change to direct-to-Blob client uploads.
 7. **Keep the API private if it will contain real client data.** This app currently has no login and its `/api/v1` routes are open. A public Vercel URL therefore exposes the API to anyone who can reach it. Add authentication or configure access protection before storing real client or financial records.
 
@@ -64,7 +64,7 @@ Vercel's Git integration deploys each project from the same repository. Push the
 
    `PORT` is not needed on Vercel. Add environment variables to Preview only if you intentionally want preview builds to connect to a separate test database and storage.
 5. Deploy the backend project. Copy its production URL, for example `https://tc-interior-api.vercel.app`.
-6. Open `https://<backend-domain>/api/v1/health`. It should return the API health response. If it fails, inspect the backend deployment's runtime logs and check the Atlas access list and environment variable names.
+6. Open `https://<backend-domain>/api/v1/health`. It should return the API health response. Then open the frontend or call a database-backed endpoint to verify the MongoDB connection. If an invocation fails, inspect the backend deployment's runtime logs and check the Atlas access list and environment variable names.
 
 ## 5. Create the frontend Vercel project
 
