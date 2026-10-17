@@ -144,7 +144,7 @@ export function Categories() {
                     <p className="px-4 py-5 text-sm text-stone-500">No points in this category yet.</p>
                   ) : (
                     <div className="overflow-x-auto">
-                      <table className="w-full min-w-[620px] text-left text-sm">
+                      <table className="responsive-table w-full text-left text-sm">
                         <thead className="bg-white text-xs uppercase tracking-wide text-stone-500">
                           <tr>
                             <th className="px-4 py-3 font-medium">Category point</th>
@@ -157,16 +157,16 @@ export function Categories() {
                         <tbody>
                           {children.map((point) => (
                             <tr key={point.id} className="border-t border-stone-100 hover:bg-stone-50">
-                              <td className="px-4 py-3">
+                              <td className="px-4 py-3" data-label="Category point">
                                 <span className="mr-2 text-stone-300">└</span>
                                 <span className="font-medium text-stone-800">{point.name}</span>
                                 {point.description ? <span className="mt-1 block pl-6 text-xs text-stone-500">{point.description}</span> : null}
                               </td>
-                              <td className="px-4 py-3">{inr(point.defaultPrice || '0.00')}</td>
-                              <td className="px-4 py-3 text-stone-600">{point.sortOrder ?? 0}</td>
-                              <td className="px-4 py-3"><CategoryState active={point.isActive} /></td>
-                              <td className="px-4 py-3">
-                                <div className="flex justify-end gap-2">
+                              <td className="px-4 py-3" data-label="Default price">{inr(point.defaultPrice || '0.00')}</td>
+                              <td className="px-4 py-3 text-stone-600" data-label="Order">{point.sortOrder ?? 0}</td>
+                              <td className="px-4 py-3" data-label="Status"><CategoryState active={point.isActive} /></td>
+                              <td className="px-4 py-3" data-label="Actions">
+                                <div className="flex justify-start gap-2 sm:justify-end">
                                   <Button type="button" tone="secondary" onClick={() => startEdit(point)}>Edit</Button>
                                   <Button type="button" tone="danger" onClick={() => remove(point)}>Delete</Button>
                                 </div>
@@ -267,15 +267,15 @@ export function Products() {
       </div>
       {!result?.data?.length ? <Empty>No products yet.</Empty> : (
         <Panel className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+          <table className="responsive-table w-full text-left text-sm">
             <thead className="text-stone-500"><tr><th className="py-2">Name</th><th>SKU</th><th>Price</th><th>Active</th></tr></thead>
             <tbody>
               {result.data.map((product) => (
                 <tr key={product.id} className="border-t border-stone-100">
-                  <td className="py-2"><Link className="font-medium hover:underline" to={`/products/${product.id}/edit`}>{product.name}</Link></td>
-                  <td>{product.sku}</td>
-                  <td>{inr(product.sellingPrice)}</td>
-                  <td>{product.isActive ? 'Yes' : 'No'}</td>
+                  <td className="py-2" data-label="Name"><Link className="font-medium hover:underline" to={`/products/${product.id}/edit`}>{product.name}</Link></td>
+                  <td data-label="SKU">{product.sku}</td>
+                  <td data-label="Price">{inr(product.sellingPrice)}</td>
+                  <td data-label="Active">{product.isActive ? 'Yes' : 'No'}</td>
                 </tr>
               ))}
             </tbody>

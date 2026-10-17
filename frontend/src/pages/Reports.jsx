@@ -53,12 +53,12 @@ export default function Reports() {
       {!rows.length && !data?.accepted ? <Empty>No rows for this range.</Empty> : null}
       {rows.length ? (
         <Panel className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+          <table className="responsive-table w-full text-left text-sm">
             <thead className="text-stone-500"><tr>{columns.map((column) => <th key={column} className="py-2 pr-3">{column}</th>)}</tr></thead>
             <tbody>
               {rows.map((row, index) => (
                 <tr key={row.id || index} className="border-t border-stone-100">
-                  {columns.map((column) => <td key={column} className="py-2 pr-3">{formatCell(column, row[column])}</td>)}
+                  {columns.map((column) => <td key={column} className="py-2 pr-3" data-label={column}>{formatCell(column, row[column])}</td>)}
                 </tr>
               ))}
             </tbody>

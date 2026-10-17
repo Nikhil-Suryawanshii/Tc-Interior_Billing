@@ -117,18 +117,18 @@ function DocumentList({ kind }) {
       </div>
       {!result?.data?.length ? <Empty>No documents yet.</Empty> : (
         <Panel className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+          <table className="responsive-table w-full text-left text-sm">
             <thead className="text-stone-500">
               <tr><th className="py-2">Number</th><th>Client</th><th>Date</th><th>Status</th><th>Total</th></tr>
             </thead>
             <tbody>
               {result.data.map((row) => (
                 <tr key={row.id} className="border-t border-stone-100">
-                  <td className="py-2"><Link className="font-medium hover:underline" to={`${base}/${row.id}`}>{row.number}</Link></td>
-                  <td>{row.clientName}</td>
-                  <td>{prettyDate(row.quotationDate || row.invoiceDate)}</td>
-                  <td><StatusBadge status={row.status} /></td>
-                  <td>{inr(row.grandTotal, row.currency)}</td>
+                  <td className="py-2" data-label="Number"><Link className="font-medium hover:underline" to={`${base}/${row.id}`}>{row.number}</Link></td>
+                  <td data-label="Client">{row.clientName}</td>
+                  <td data-label="Date">{prettyDate(row.quotationDate || row.invoiceDate)}</td>
+                  <td data-label="Status"><StatusBadge status={row.status} /></td>
+                  <td data-label="Total">{inr(row.grandTotal, row.currency)}</td>
                 </tr>
               ))}
             </tbody>
@@ -279,7 +279,7 @@ function DocumentView({ kind }) {
         {kind === 'invoice' ? <p><span className="text-stone-500">Balance due</span><br />{inr(record.balanceDue, record.currency)}</p> : null}
       </Panel>
       <Panel className="mb-4 overflow-x-auto">
-        <table className="w-full text-left text-sm">
+        <table className="responsive-table w-full text-left text-sm">
           <thead className="text-stone-500">
             <tr>
               <th className="py-2">Item</th>
@@ -296,9 +296,9 @@ function DocumentView({ kind }) {
                 </tr>
                 {group.items.map((item) => (
                   <tr key={item._id || item.name} className="border-t border-stone-100 align-top">
-                    <td className="py-2 pl-4">{item.name}</td>
-                    <td className="py-2 text-right">{item.quantity}{item.unit ? ` ${item.unit}` : ''}</td>
-                    <td className="py-2 text-right">
+                    <td className="py-2 pl-4" data-label="Item">{item.name}</td>
+                    <td className="py-2 text-right" data-label="Qty">{item.quantity}{item.unit ? ` ${item.unit}` : ''}</td>
+                    <td className="py-2 text-right" data-label="Price">
                       {editable ? (
                         <input
                           className="w-28 rounded border border-stone-300 px-2 py-1 text-right"
@@ -310,7 +310,7 @@ function DocumentView({ kind }) {
                         />
                       ) : inr(item.unitPrice, record.currency)}
                     </td>
-                    <td className="py-2 text-right">{inr(previewLine(item), record.currency)}</td>
+                    <td className="py-2 text-right" data-label="Total">{inr(previewLine(item), record.currency)}</td>
                   </tr>
                 ))}
               </Fragment>

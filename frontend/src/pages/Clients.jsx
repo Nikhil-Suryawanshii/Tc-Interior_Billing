@@ -40,15 +40,15 @@ export function Clients() {
       <input className={`${controlClass} mb-4 max-w-sm`} placeholder="Search name, phone, or email" value={search} onChange={(event) => { setPage(1); setSearch(event.target.value); }} />
       {!result?.data?.length ? <Empty>No clients yet.</Empty> : (
         <Panel className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+          <table className="responsive-table w-full text-left text-sm">
             <thead className="text-stone-500"><tr><th className="py-2">Name</th><th>Phone</th><th>Email</th><th>City</th></tr></thead>
             <tbody>
               {result.data.map((client) => (
                 <tr key={client.id} className="border-t border-stone-100">
-                  <td className="py-2"><Link className="font-medium hover:underline" to={`/clients/${client.id}`}>{client.name}</Link></td>
-                  <td>{client.phone}</td>
-                  <td>{client.email}</td>
-                  <td>{client.city}</td>
+                  <td className="py-2" data-label="Name"><Link className="font-medium hover:underline" to={`/clients/${client.id}`}>{client.name}</Link></td>
+                  <td data-label="Phone">{client.phone}</td>
+                  <td data-label="Email">{client.email}</td>
+                  <td data-label="City">{client.city}</td>
                 </tr>
               ))}
             </tbody>
