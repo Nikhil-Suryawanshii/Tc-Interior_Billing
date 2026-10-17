@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { getData, send } from '../api';
 import { inr, prettyDate } from '../lib/format';
+import { recordId } from '../lib/recordId';
 import { Button, Empty, Field, Notice, PageHeader, Panel, StatusBadge, controlClass } from '../components/ui';
 
 const emptyClient = {
@@ -43,14 +44,17 @@ export function Clients() {
           <table className="responsive-table w-full text-left text-sm">
             <thead className="text-stone-500"><tr><th className="py-2">Name</th><th>Phone</th><th>Email</th><th>City</th></tr></thead>
             <tbody>
-              {result.data.map((client) => (
-                <tr key={client.id} className="border-t border-stone-100">
-                  <td className="py-2" data-label="Name"><Link className="font-medium hover:underline" to={`/clients/${client.id}`}>{client.name}</Link></td>
-                  <td data-label="Phone">{client.phone}</td>
-                  <td data-label="Email">{client.email}</td>
-                  <td data-label="City">{client.city}</td>
-                </tr>
-              ))}
+              {result.data.map((client, index) => {
+                const clientId = recordId(client);
+                return (
+                  <tr key={clientId || `${client.name}-${index}`} className="border-t border-stone-100">
+                    <td className="py-2" data-label="Name">{clientId ? <Link className="font-medium hover:underline" to={`/clients/${clientId}`}>{client.name}</Link> : client.name}</td>
+                    <td data-label="Phone">{client.phone}</td>
+                    <td data-label="Email">{client.email}</td>
+                    <td data-label="City">{client.city}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </Panel>
@@ -68,15 +72,21 @@ export function ClientForm() {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    if (id === 'undefined' || id === 'null') {
+      navigate('/clients', { replace: true });
+      return;
+    }
     if (!id) return;
     getData(`/clients/${id}`).then((response) => setForm(response.data)).catch((err) => setError(err.message));
-  }, [id]);
+  }, [id, navigate]);
 
   async function submit(event) {
     event.preventDefault();
     try {
       const response = await send(id ? 'put' : 'post', id ? `/clients/${id}` : '/clients', form);
-      navigate(`/clients/${response.data.id}`);
+      const clientId = recordId(response.data);
+      if (!clientId) throw new Error('The server saved the client but did not return its ID. Refresh the client list and open it again.');
+      navigate(`/clients/${clientId}`);
     } catch (err) {
       setError(err.message);
       setErrors(err.errors || {});
@@ -120,13 +130,17 @@ export function ClientDetail() {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    if (!id || id === 'undefined' || id === 'null') {
+      navigate('/clients', { replace: true });
+      return;
+    }
     Promise.all([getData(`/clients/${id}`), getData(`/clients/${id}/history`)])
       .then(([clientResponse, historyResponse]) => {
         setClient(clientResponse.data);
         setHistory(historyResponse.data);
       })
       .catch((err) => setError(err.message));
-  }, [id]);
+  }, [id, navigate]);
 
   async function remove() {
     if (!window.confirm('Delete this client?')) return;
@@ -171,13 +185,16 @@ function History({ title, rows, href }) {
   return (
     <Panel className="mb-4">
       <h2 className="mb-2 font-semibold">{title}</h2>
-      {rows.length === 0 ? <Empty>None yet.</Empty> : rows.map((row) => (
-        <div key={row.id} className="flex items-center justify-between gap-3 border-t border-stone-100 py-2 text-sm">
-          <Link to={`${href}/${row.id}`} className="font-medium hover:underline">{row.number}</Link>
-          <StatusBadge status={row.status} />
-          <span>{inr(row.grandTotal)}</span>
-        </div>
-      ))}
+      {rows.length === 0 ? <Empty>None yet.</Empty> : rows.map((row, index) => {
+        const id = recordId(row);
+        return (
+          <div key={id || `${row.number}-${index}`} className="flex items-center justify-between gap-3 border-t border-stone-100 py-2 text-sm">
+            {id ? <Link to={`${href}/${id}`} className="font-medium hover:underline">{row.number}</Link> : <span>{row.number}</span>}
+            <StatusBadge status={row.status} />
+            <span>{inr(row.grandTotal)}</span>
+          </div>
+        );
+      })}
     </Panel>
   );
 }

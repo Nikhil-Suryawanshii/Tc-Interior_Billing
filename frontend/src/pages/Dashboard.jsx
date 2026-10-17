@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { getData } from '../api';
 import { inr, prettyDate } from '../lib/format';
+import { recordId } from '../lib/recordId';
 import { Button, Empty, Notice, PageHeader, Panel, StatusBadge } from '../components/ui';
 
 export default function Dashboard() {
@@ -123,15 +124,18 @@ function Recent({ title, rows, base }) {
       <h2 className="mb-3 font-semibold">{title}</h2>
       {rows.length === 0 ? <Empty>Nothing yet.</Empty> : (
         <ul className="divide-y divide-stone-100 text-sm">
-          {rows.map((row) => (
-            <li key={row.id} className="flex items-center justify-between gap-2 py-2">
-              <Link to={`${base}/${row.id}`} className="font-medium hover:underline">{row.number}</Link>
-              <span className="text-stone-500">{row.clientName}</span>
-              <span>{prettyDate(row.date)}</span>
-              <StatusBadge status={row.status} />
-              <span>{inr(row.total)}</span>
-            </li>
-          ))}
+          {rows.map((row, index) => {
+            const id = recordId(row);
+            return (
+              <li key={id || `${row.number}-${index}`} className="flex items-center justify-between gap-2 py-2">
+                {id ? <Link to={`${base}/${id}`} className="font-medium hover:underline">{row.number}</Link> : <span className="font-medium">{row.number}</span>}
+                <span className="text-stone-500">{row.clientName}</span>
+                <span>{prettyDate(row.date)}</span>
+                <StatusBadge status={row.status} />
+                <span>{inr(row.total)}</span>
+              </li>
+            );
+          })}
         </ul>
       )}
     </Panel>

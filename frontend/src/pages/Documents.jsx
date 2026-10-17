@@ -2,6 +2,7 @@ import { Fragment, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { getData, openPdf, send } from '../api';
 import { dateInput, inr, prettyDate } from '../lib/format';
+import { recordId } from '../lib/recordId';
 import DocumentForm, { emptyDocument } from '../components/DocumentForm';
 import { Button, Empty, Field, Notice, PageHeader, Panel, StatusBadge, controlClass } from '../components/ui';
 import { Pager } from './Clients';
@@ -122,15 +123,18 @@ function DocumentList({ kind }) {
               <tr><th className="py-2">Number</th><th>Client</th><th>Date</th><th>Status</th><th>Total</th></tr>
             </thead>
             <tbody>
-              {result.data.map((row) => (
-                <tr key={row.id} className="border-t border-stone-100">
-                  <td className="py-2" data-label="Number"><Link className="font-medium hover:underline" to={`${base}/${row.id}`}>{row.number}</Link></td>
-                  <td data-label="Client">{row.clientName}</td>
-                  <td data-label="Date">{prettyDate(row.quotationDate || row.invoiceDate)}</td>
-                  <td data-label="Status"><StatusBadge status={row.status} /></td>
-                  <td data-label="Total">{inr(row.grandTotal, row.currency)}</td>
-                </tr>
-              ))}
+              {result.data.map((row, index) => {
+                const id = recordId(row);
+                return (
+                  <tr key={id || `${row.number}-${index}`} className="border-t border-stone-100">
+                    <td className="py-2" data-label="Number">{id ? <Link className="font-medium hover:underline" to={`${base}/${id}`}>{row.number}</Link> : row.number}</td>
+                    <td data-label="Client">{row.clientName}</td>
+                    <td data-label="Date">{prettyDate(row.quotationDate || row.invoiceDate)}</td>
+                    <td data-label="Status"><StatusBadge status={row.status} /></td>
+                    <td data-label="Total">{inr(row.grandTotal, row.currency)}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </Panel>
@@ -150,6 +154,10 @@ function DocumentEditor({ kind }) {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    if (id === 'undefined' || id === 'null') {
+      navigate(base, { replace: true });
+      return;
+    }
     if (id) {
       getData(`${base}/${id}`)
         .then((response) => {
@@ -177,7 +185,9 @@ function DocumentEditor({ kind }) {
     try {
       const response = await send(id ? 'put' : 'post', id ? `${base}/${id}` : base, payload(form));
       clearDirty();
-      navigate(`${base}/${response.data.id}`);
+      const savedId = recordId(response.data);
+      if (!savedId) throw new Error('The server saved the document but did not return its ID. Refresh the list and open it again.');
+      navigate(`${base}/${savedId}`);
     } catch (err) {
       setError(err.message);
       setErrors(err.errors || {});
@@ -205,16 +215,24 @@ function DocumentView({ kind }) {
   const [payment, setPayment] = useState({ amount: '', paymentDate: dateInput(new Date()), method: 'UPI', reference: '', notes: '' });
 
   function load() {
+    if (!id || id === 'undefined' || id === 'null') return;
     getData(`${base}/${id}`).then((response) => setRecord(response.data)).catch((err) => setError(err.message));
   }
-  useEffect(load, [base, id]);
+  useEffect(() => {
+    if (!id || id === 'undefined' || id === 'null') {
+      navigate(base, { replace: true });
+      return;
+    }
+    load();
+  }, [base, id, navigate]);
 
   async function run(action) {
     setError('');
     try {
       const response = await action();
-      if (response?.data?.id && response.data.number && response.data.number !== record?.number && kind === 'quotation' && action.name === '') {
-        navigate(`/quotations/${response.data.id}`);
+      const updatedId = recordId(response?.data);
+      if (updatedId && response.data.number && response.data.number !== record?.number && kind === 'quotation' && action.name === '') {
+        navigate(`/quotations/${updatedId}`);
       }
       setMessage(response?.message || 'Saved');
       load();
@@ -332,12 +350,14 @@ function DocumentView({ kind }) {
           </select>
           <Button tone="secondary" onClick={async () => {
             const response = await run(() => send('post', `/quotations/${id}/duplicate`));
-            if (response?.data?.id) navigate(`/quotations/${response.data.id}`);
+            const duplicateId = recordId(response?.data);
+            if (duplicateId) navigate(`/quotations/${duplicateId}`);
           }}>Duplicate</Button>
           {record.status === 'Accepted' && !record.convertedInvoiceId ? (
             <Button onClick={async () => {
               const response = await run(() => send('post', `/quotations/${id}/convert`));
-              if (response?.data?.id) navigate(`/invoices/${response.data.id}`);
+              const invoiceId = recordId(response?.data);
+              if (invoiceId) navigate(`/invoices/${invoiceId}`);
             }}>Convert to invoice</Button>
           ) : null}
           <Button tone="danger" onClick={async () => {
