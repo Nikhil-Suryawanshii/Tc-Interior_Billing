@@ -64,7 +64,7 @@ Vercel's Git integration deploys each project from the same repository. Push the
 
    `PORT` is not needed on Vercel. Add environment variables to Preview only if you intentionally want preview builds to connect to a separate test database and storage.
 5. Deploy the backend project. Copy its production URL, for example `https://tc-interior-api.vercel.app`.
-6. Open `https://<backend-domain>/api/v1/health`. It should return the API health response. Then open the frontend or call a database-backed endpoint to verify the MongoDB connection. If an invocation fails, inspect the backend deployment's runtime logs and check the Atlas access list and environment variable names.
+6. Open `https://<backend-domain>/`. The backend status page should show **Connected successfully** when MongoDB is reachable. `/api/v1/health` checks the API process separately. If the status page reports a database failure, inspect the backend deployment's runtime logs and check the Atlas access list and environment variable names.
 
 ## 5. Create the frontend Vercel project
 
