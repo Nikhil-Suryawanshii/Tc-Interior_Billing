@@ -1,5 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
+import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
 import express from 'express';
 import cors from 'cors';
@@ -90,7 +91,9 @@ export default app;
 
 // Vercel imports the Express app as a function. Keep filesystem setup and
 // app.listen() for local development only; function storage is ephemeral.
-if (process.env.VERCEL !== '1') {
+const isDirectExecution = process.argv[1]
+  && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (process.env.VERCEL !== '1' && isDirectExecution) {
   start().catch((error) => {
     console.error(error.message);
     process.exit(1);
